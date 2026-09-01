@@ -1,0 +1,147 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <DHT.h>
+
+// ===== WIFI =====
+const char* ssid = "Conectividad Cordoba";
+const char* password = "";
+
+// ===== DHT22 =====
+#define DHTPIN 4
+#define DHTTYPE DHT22
+
+DHT dht(DHTPIN, DHTTYPE);
+
+// Servidor web
+WebServer server(80);
+
+// ===== PAGINA WEB =====
+void handleRoot() {
+
+  float temperatura = dht.readTemperature();
+  float humedad = dht.readHumidity();
+
+  String pagina = R"rawliteral(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="3">
+
+  <title>ESP32 - DHT22</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background-color: #f2f2f2;
+      margin-top: 50px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .contenedor {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .tarjeta {
+      background: white;
+      padding: 25px;
+      width: 220px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    .valor {
+      font-size: 40px;
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .unidad {
+      font-size: 20px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🌱 Datos del ESP32</h1>
+
+  <div class="contenedor">
+
+    <div class="tarjeta">
+      <h2>🌡️ Temperatura</h2>
+      <div class="valor">)rawliteral";
+
+  pagina += String(temperatura, 1);
+
+  pagina += R"rawliteral(
+      </div>
+      <div class="unidad">°C</div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>💧 Humedad</h2>
+      <div class="valor">)rawliteral";
+
+  pagina += String(humedad, 1);
+
+  pagina += R"rawliteral(
+      </div>
+      <div class="unidad">%</div>
+    </div>
+
+  </div>
+
+  <p>Los valores se actualizan cada 3 segundos.</p>
+
+</body>
+</html>
+)rawliteral";
+
+  server.send(200, "text/html", pagina);
+}
+
+void setup() {
+
+  Serial.begin(115200);
+
+  dht.begin();
+
+  // Conectar al WiFi
+  WiFi.begin(ssid, password);
+
+  Serial.print("Conectando al WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi conectado");
+
+  // Mostrar IP
+  Serial.print("Direccion IP: ");
+  Serial.println(WiFi.localIP());
+
+  // Iniciar servidor
+  server.on("/", handleRoot);
+
+  server.begin();
+
+  Serial.println("Servidor web iniciado");
+}
+
+void loop() {
+
+  server.handleClient();
+}
